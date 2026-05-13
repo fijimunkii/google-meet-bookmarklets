@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Meet → Longer Notes Bookmarklet</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 820px; margin: 2em auto; padding: 0 1em; line-height: 1.5; color: #222; }
+  pre { background: #f4f4f4; padding: 1em; overflow-x: auto; border-radius: 6px; font-size: 12px; line-height: 1.4; }
+  .bm { display: inline-block; padding: 10px 18px; background: #1a73e8; color: #fff; border-radius: 6px; text-decoration: none; font-weight: 600; margin: 1em 0; user-select: none; }
+  .bm:hover { background: #1557b0; }
+  code { background: #f4f4f4; padding: 1px 5px; border-radius: 3px; font-size: 0.9em; }
+  h2 { margin-top: 2em; }
+  .note { background: #fff8e1; border-left: 4px solid #fbbc04; padding: 0.8em 1em; border-radius: 4px; }
+</style>
+</head>
+<body>
+
+<h1>Meet → Longer Notes</h1>
+<p>One-click bookmarklet that flips Gemini meeting notes to <b>Longer</b> via the <code>UpdateMeetingSpace</code> RPC.</p>
+
+<p>Drag this to your bookmarks bar:</p>
+
+<a class="bm" href="javascript:(()=>{const O='https://meet.google.com',U='/$rpc/google.rtc.meetings.v1.MeetingSpaceService/UpdateMeetingSpace',K=/^(authorization$|content-type$|accept$|x-goog-)/i,N={1:'Standard',2:'Longer'},oF=window.fetch;let cap=null;function toast(m,t){const S={loading:{bg:'#202124',dot:'#8ab4f8'},success:{bg:'#1e7e34',dot:'#fff'},error:{bg:'#c5221f',dot:'#fff'}},s=S[t]||S.loading,d=document.createElement('div');d.style.cssText='position:fixed;top:24px;right:24px;background:'+s.bg+';color:#fff;padding:11px 16px;border-radius:8px;z-index:2147483647;font:500 13px/1.4 system-ui,-apple-system,sans-serif;letter-spacing:.2px;box-shadow:0 2px 6px rgba(0,0,0,.16),0 8px 24px rgba(0,0,0,.18);display:flex;align-items:center;gap:10px;opacity:0;transform:translateY(-6px);transition:opacity .18s,transform .18s';const dot=document.createElement('span');dot.style.cssText='width:8px;height:8px;border-radius:50%;flex:none;background:'+s.dot;d.appendChild(dot);d.appendChild(document.createTextNode(m));(document.body||document.documentElement).appendChild(d);requestAnimationFrame(()=>{d.style.opacity='1';d.style.transform='translateY(0)'});setTimeout(()=>{d.style.opacity='0';d.style.transform='translateY(-6px)';setTimeout(()=>d.remove(),200)},3500)}function dec(b){try{const bin=atob(b),by=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)by[i]=bin.charCodeAt(i);let i=0;while(i<by.length){const t=by[i++];if(t===0x12){const l=by[i++];return new TextDecoder().decode(by.slice(i,i+l))}if((t&7)===0)i++;else break}}catch(e){}return null}function build(s,l){const n=new TextEncoder().encode('spaces/'+s),p=new TextEncoder().encode('call_info.settings.smart_notes_settings.smart_notes_detail_level'),sn=new Uint8Array([0x82,0x03,0x02,0x08,l]),st=new Uint8Array([0x5a,sn.length,...sn]),ci=new Uint8Array([0x32,st.length,...st]),tl=new Uint8Array([0x7a,0x00]),ms=new Uint8Array([0x0a,n.length,...n,...ci,...tl]),fm=new Uint8Array([0x0a,p.length,...p]);return new Uint8Array([0x0a,ms.length,...ms,0x12,fm.length,...fm])}async function fire(l){if(!cap){toast('No meeting context captured','error');return}const r=await oF(O+U,{method:'POST',credentials:'include',headers:cap.headers,body:build(cap.spaceId,l)}),t=await r.text();console.log('[notes]','level='+l,'status='+r.status,'resp='+t);if(r.ok)toast('Gemini notes: '+(N[l]||'Level '+l),'success');else toast('Couldn’t update notes (HTTP '+r.status+')','error');return{status:r.status,body:t}}window.setNotesDetailLevel=fire;toast('Setting Gemini notes to Longer…','loading');window.fetch=function(inp,init){const url=typeof inp==='string'?inp:inp.url,res=oF.apply(this,arguments);if(cap||!url||url.indexOf('MeetingSpaceService')===-1)return res;const rH=(init&&init.headers)||(inp instanceof Request?inp.headers:{}),h={};function ad(k,v){if(K.test(k))h[k.toLowerCase()]=v}if(rH instanceof Headers)rH.forEach((v,k)=>ad(k,v));else if(Array.isArray(rH))for(const[k,v]of rH)ad(k,v);else for(const k in rH)ad(k,rH[k]);if(!h['authorization']||!h['x-goog-meeting-identifier'])return res;const sid=dec(h['x-goog-meeting-identifier']);if(!sid)return res;cap={headers:h,spaceId:sid};window.fetch=oF;window.__meetCtx=cap;console.log('[notes] captured space='+sid,h);Promise.resolve(res).then(()=>fire(2),()=>fire(2));return res};setTimeout(()=>{if(!cap){window.fetch=oF;toast('No active meeting detected','error')}},15000);console.log('%c[notes] armed. setNotesDetailLevel(1=Standard, 2=Longer) once captured.','color:#1a73e8;font-weight:bold')})();">📝 Meet → Longer Notes</a>
+
+<h2>How to install</h2>
+<ol>
+  <li><b>Show bookmarks bar</b> in Chrome: <code>⌘⇧B</code> (Mac) / <code>Ctrl+Shift+B</code> (Win).</li>
+  <li><b>Drag the blue button above</b> to your bookmarks bar.</li>
+  <li>While in an active Meet, click the bookmark.</li>
+  <li>Toast top-right shows progress: <em>"Waiting for Meet RPC…"</em> → <em>"lvl=1 200"</em>.</li>
+</ol>
+
+<div class="note">
+  <b>How it works:</b> The bookmarklet hooks <code>window.fetch</code> and waits for Meet to fire any RPC to <code>MeetingSpaceService</code> (it does this constantly during a meeting — heartbeats, presence, layout, etc.). When it sees one, it grabs the auth headers + decodes the space ID from <code>x-goog-meeting-identifier</code>, then immediately fires its own <code>UpdateMeetingSpace</code> with <code>smart_notes_detail_level = 1</code>. Once captured, you can experiment from console without re-clicking.
+</div>
+
+<h2>Experimenting from the console</h2>
+<p>After clicking the bookmarklet once and seeing a 200, open DevTools console and try other enum values:</p>
+<pre>setNotesDetailLevel(1)   // Standard (confirmed)
+setNotesDetailLevel(2)   // Longer (confirmed)
+setNotesDetailLevel(0)   // ?
+setNotesDetailLevel(3)   // ?</pre>
+<p>The captured headers are reused, so these calls fire instantly.</p>
+
+<h2>If something breaks</h2>
+<ul>
+  <li><b>"No Meet RPC seen"</b> after 15s — you're probably not in an active meeting, or Meet's heartbeat is suppressed (rare).</li>
+  <li><b>4xx response</b> — toast and console show the status + response body. <code>"invalid argument"</code> = body framing wrong; <code>"unsafe for trusted domain"</code> = something rejected the captured auth (shouldn't happen since we're reusing Meet's own valid header).</li>
+  <li><b>Wrong meeting</b> — if you click the bookmarklet then switch meetings, <code>__meetCtx</code> is stale. Re-click in the new meeting.</li>
+</ul>
+
+<h2>Source</h2>
+<pre id="src"></pre>
+
+<script>
+const SRC = `(() => {
+  const ORIGIN = 'https://meet.google.com';
+  const URL_PATH = '/$rpc/google.rtc.meetings.v1.MeetingSpaceService/UpdateMeetingSpace';
+
+  // Headers we forward from the captured request. Browser-managed headers
+  // (sec-*, cookie, origin, user-agent, x-client-data, etc.) are forbidden
+  // from JS fetch — Chrome reattaches them automatically — so we only keep
+  // the custom Google auth/routing headers.
+  const KEEP = /^(authorization$|content-type$|accept$|x-goog-)/i;
+
+  // Alt source for the space ID, in case the interceptor approach is
+  // undesirable in future: IndexedDB \`meet_db.meet_store\` contains the
+  // space ID alongside other meeting state. Use a strict word-boundary
+  // regex on JSON.stringify(records) to extract — there are usually a few
+  // 12-char candidates so disambiguate by also matching the URL meeting-code.
+  // Auth header (SAPISIDHASH) can be computed locally as
+  //   sha1(timestamp + " " + SAPISID + " " + ORIGIN)
+  // (verified against live captures). The reason we still use the interceptor
+  // is that even with a verified-correct hash, manual fetches sometimes get
+  // rejected as "Request unsafe for trusted domain" — likely tied to
+  // Chrome-attached headers we can't reproduce from JS. Reusing a captured
+  // header sidesteps that entirely.
+
+  // Friendly names for known enum values; unknown values fall back to "Level N".
+  const LEVEL_NAMES = { 1: 'Standard', 2: 'Longer' };
+
+  const origFetch = window.fetch;
+  let captured = null;
+
+  // Lightweight status toast: dot indicator + message, fades in/out.
+  // type ∈ { 'loading', 'success', 'error' }
+  function toast(msg, type) {
+    const STYLES = {
+      loading: { bg: '#202124', dot: '#8ab4f8' },
+      success: { bg: '#1e7e34', dot: '#fff' },
+      error:   { bg: '#c5221f', dot: '#fff' }
+    };
+    const s = STYLES[type] || STYLES.loading;
+    const d = document.createElement('div');
+    d.style.cssText =
+      'position:fixed;top:24px;right:24px;background:' + s.bg + ';color:#fff;' +
+      'padding:11px 16px;border-radius:8px;z-index:2147483647;' +
+      'font:500 13px/1.4 system-ui,-apple-system,sans-serif;letter-spacing:.2px;' +
+      'box-shadow:0 2px 6px rgba(0,0,0,.16),0 8px 24px rgba(0,0,0,.18);' +
+      'display:flex;align-items:center;gap:10px;' +
+      'opacity:0;transform:translateY(-6px);' +
+      'transition:opacity .18s,transform .18s';
+    const dot = document.createElement('span');
+    dot.style.cssText =
+      'width:8px;height:8px;border-radius:50%;flex:none;background:' + s.dot;
+    d.appendChild(dot);
+    d.appendChild(document.createTextNode(msg));
+    (document.body || document.documentElement).appendChild(d);
+    requestAnimationFrame(() => {
+      d.style.opacity = '1';
+      d.style.transform = 'translateY(0)';
+    });
+    setTimeout(() => {
+      d.style.opacity = '0';
+      d.style.transform = 'translateY(-6px)';
+      setTimeout(() => d.remove(), 200);
+    }, 3500);
+  }
+
+  // x-goog-meeting-identifier is base64-encoded protobuf:
+  //   field 1 (varint) = 3
+  //   field 2 (string) = space ID
+  function decodeSpaceId(b64) {
+    try {
+      const bin = atob(b64);
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      let i = 0;
+      while (i < bytes.length) {
+        const tag = bytes[i++];
+        if (tag === 0x12) {                 // field 2, length-delimited
+          const len = bytes[i++];
+          return new TextDecoder().decode(bytes.slice(i, i + len));
+        }
+        if ((tag & 7) === 0) i++;           // varint, skip 1 byte (assumes < 128)
+        else break;
+      }
+    } catch (e) {}
+    return null;
+  }
+
+  // Construct the protobuf body for UpdateMeetingSpace targeting
+  // smart_notes_detail_level. Confirmed against on-wire captures:
+  //
+  //   UpdateMeetingSpaceRequest {
+  //     1 (MeetingSpace, len 32) {
+  //       1 (name, str)   = "spaces/<id>"      // 19 bytes incl. "spaces/" prefix
+  //       6 (call_info, len 7) {
+  //         11 (settings, len 5) {
+  //           48 (smart_notes_settings, len 2) {  // tag = varint 386 = 0x82 0x03
+  //             1 (smart_notes_detail_level, varint) = level   // 1=Standard, 2=Longer
+  //           }
+  //         }
+  //       }
+  //       15 (?, len 0) = (always present, purpose unknown)
+  //     }
+  //     2 (FieldMask, len 66) {
+  //       1 (paths, str) = "call_info.settings.smart_notes_settings.smart_notes_detail_level"
+  //     }
+  //   }
+  function buildBody(spaceId, level) {
+    const name = new TextEncoder().encode('spaces/' + spaceId);
+    const path = new TextEncoder().encode(
+      'call_info.settings.smart_notes_settings.smart_notes_detail_level');
+    // smart_notes_settings (field 48) wraps smart_notes_detail_level varint.
+    // Field 48 tag with wire type 2: (48<<3)|2 = 386, encoded as varint = 0x82 0x03.
+    const smartNotes = new Uint8Array([0x82, 0x03, 0x02, 0x08, level]);
+    const settings   = new Uint8Array([0x5a, smartNotes.length, ...smartNotes]);
+    const callInfo   = new Uint8Array([0x32, settings.length, ...settings]);
+    const tail       = new Uint8Array([0x7a, 0x00]);  // field 15, always empty
+    const ms = new Uint8Array([0x0a, name.length, ...name, ...callInfo, ...tail]);
+    const fm = new Uint8Array([0x0a, path.length, ...path]);
+    return new Uint8Array([0x0a, ms.length, ...ms, 0x12, fm.length, ...fm]);
+  }
+
+  async function fire(level) {
+    if (!captured) { toast('No meeting context captured', 'error'); return; }
+    const body = buildBody(captured.spaceId, level);
+    const r = await origFetch(ORIGIN + URL_PATH, {
+      method: 'POST',
+      credentials: 'include',
+      headers: captured.headers,
+      body
+    });
+    const txt = await r.text();
+    console.log('[notes]', 'level=' + level, 'status=' + r.status, 'response=' + txt);
+    if (r.ok) {
+      toast('Gemini notes: ' + (LEVEL_NAMES[level] || 'Level ' + level), 'success');
+    } else {
+      toast('Couldn’t update notes (HTTP ' + r.status + ')', 'error');
+    }
+    return { status: r.status, body: txt };
+  }
+
+  // Exposed for console experimentation: setNotesDetailLevel(1|2)
+  window.setNotesDetailLevel = fire;
+
+  toast('Setting Gemini notes to Longer…', 'loading');
+
+  window.fetch = function (input, init) {
+    const url = typeof input === 'string' ? input : input.url;
+    const result = origFetch.apply(this, arguments);
+
+    if (captured || !url || url.indexOf('MeetingSpaceService') === -1) return result;
+
+    const raw = (init && init.headers) ||
+                (input instanceof Request ? input.headers : {});
+    const headers = {};
+    function add(k, v) {
+      if (KEEP.test(k)) headers[k.toLowerCase()] = v;
+    }
+    if (raw instanceof Headers)        raw.forEach((v, k) => add(k, v));
+    else if (Array.isArray(raw))       for (const [k, v] of raw) add(k, v);
+    else                               for (const k in raw) add(k, raw[k]);
+
+    if (!headers['authorization'] || !headers['x-goog-meeting-identifier']) {
+      return result;
+    }
+    const spaceId = decodeSpaceId(headers['x-goog-meeting-identifier']);
+    if (!spaceId) return result;
+
+    captured = { headers, spaceId };
+    window.fetch = origFetch;
+    window.__meetCtx = captured;
+    console.log('[notes] captured space=' + spaceId, headers);
+
+    // Fire ours after the original settles, regardless of its outcome.
+    // Default level 2 = LONGER (level 1 = STANDARD, confirmed via wire capture).
+    Promise.resolve(result).then(() => fire(2), () => fire(2));
+
+    return result;
+  };
+
+  setTimeout(() => {
+    if (!captured) {
+      window.fetch = origFetch;
+      toast('No active meeting detected', 'error');
+    }
+  }, 15000);
+
+  console.log(
+    '%c[notes] armed. After capture, setNotesDetailLevel(1=Standard, 2=Longer) from console.',
+    'color:#1a73e8;font-weight:bold'
+  );
+})();`;
+document.getElementById('src').textContent = SRC;
+</script>
+
+</body>
+</html>
